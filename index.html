@@ -169,8 +169,8 @@
     const overallChallengeProgressEl = document.getElementById('overallChallengeProgress');
     const overallChallengeCompletionTextEl = document.getElementById('overallChallengeCompletionText');
     const addPhaseBtn = document.getElementById('addPhaseBtn');
-    const clearAllPhasesBtn = document.getElementById('clearAllPhasesBtn'); // New button
-    const resetChallengeDataBtn = document.getElementById('resetChallengeDataBtn'); // New button
+    const clearAllPhasesBtn = document.getElementById('clearAllPhasesBtn'); 
+    const resetChallengeDataBtn = document.getElementById('resetChallengeDataBtn'); 
     const phaseModal = document.getElementById('phaseModal');
     const phaseForm = document.getElementById('phaseForm');
     const cancelPhaseBtn = document.getElementById('cancelPhase');
@@ -393,12 +393,23 @@
         if (overallPL >= overallTarget && overallTarget > 0) { overallChallengeCompletionTextEl.innerHTML = `<i class="fas fa-trophy text-yellow-400 mr-1"></i> Overall Target Achieved!`; }
     };
 
-    renderPhases = () => { /* ... as before ... */ };
+    renderPhases = () => { /* ... as before with corrected sort ... */ };
     renderPhases = () => {
         phasesContainer.innerHTML = '';
         if (!appData.phases || appData.phases.length === 0) { noPhasesMessage.classList.remove('hidden'); phasesContainer.classList.add('hidden'); } 
         else { noPhasesMessage.classList.add('hidden'); phasesContainer.classList.remove('hidden'); }
-        if(appData.phases) appData.phases.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+        
+        if (appData.phases) {
+            appData.phases.sort((a, b) => {
+                const numA = parseInt(a.title.match(/#(\d+)/)?.[1]);
+                const numB = parseInt(b.title.match(/#(\d+)/)?.[1]);
+                if (!isNaN(numA) && !isNaN(numB)) { return numA - numB; } 
+                else if (!isNaN(numA)) { return -1; } 
+                else if (!isNaN(numB)) { return 1; }
+                return new Date(a.createdAt) - new Date(b.createdAt);
+            });
+        }
+
         (appData.phases || []).forEach(phase => {
             const phasePL = calculatePhaseRealizedPL(phase);
             const phaseProgressPercentage = phase.targetAmount > 0 ? Math.min(Math.max((phasePL / phase.targetAmount) * 100, 0), 100) : (phasePL > 0 ? 100 : 0);
@@ -448,7 +459,7 @@
         phaseForm.reset(); 
         phaseIdInput.value = ''; 
         numberOfPhasesInput.value = '1';
-        numberOfPhasesInput.disabled = false; // Enable for new phase creation
+        numberOfPhasesInput.disabled = false; 
         openModal(phaseModal);
     });
     cancelPhaseBtn.addEventListener('click', () => closeModal(phaseModal));
@@ -484,13 +495,12 @@
 
     resetChallengeDataBtn.addEventListener('click', () => {
         showConfirmationModal('Reset Challenge Data', 'Are you sure you want to reset ALL challenge data, including details and phases? This action cannot be undone.', async () => {
-            setDefaultAppData(); // Resets both challengeDetails and phases in appData
-            await saveDataToDB(); // Save the reset state
+            setDefaultAppData(); 
+            await saveDataToDB(); 
             renderChallengeSummary();
             renderPhases();
         });
     });
-
 
     cancelSubTaskBtn.addEventListener('click', () => closeModal(subTaskModal));
     subTaskForm.addEventListener('submit', async (e) => { /* ... as before ... */ });
@@ -517,7 +527,7 @@
         } else { alert("Please provide valid description, type, and non-negative amount."); }
     });
 
-    phasesContainer.addEventListener('click', async (e) => { /* ... as before, edit phase disables num input ... */ });
+    phasesContainer.addEventListener('click', async (e) => { /* ... as before ... */ });
     phasesContainer.addEventListener('click', async (e) => {
         const phaseCard = e.target.closest('.phase-card');
         if (!phaseCard) return;
@@ -533,7 +543,7 @@
                 phaseModalTitle.textContent = "Edit Phase"; phaseIdInput.value = currentPhase.id;
                 phaseTitleInput.value = currentPhase.title; phaseTargetInput.value = currentPhase.targetAmount;
                 numberOfPhasesInput.value = '1'; 
-                numberOfPhasesInput.disabled = true; // Disable for edit
+                numberOfPhasesInput.disabled = true; 
                 openModal(phaseModal);
             }
         } else if (e.target.closest('.delete-phase')) {
