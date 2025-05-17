@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-G">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forex Challenge Planner - IndexedDB Fixed</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style>
+        body {
+            font-family: 'Inter', 'Roboto', sans-serif;
+            background-color: #f8fafc;
+            color: #334155;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .modal { background-color: rgba(71, 85, 105, 0.3); transition: opacity 0.3s ease; }
+        .modal-content { background-color: #ffffff; transition: transform 0.3s ease; border-radius: 0.75rem; }
+        .sub-phase-item.completed .sub-phase-description { text-decoration: line-through; color: #64748b; opacity: 0.8; }
+        .sub-phase-item.completed { background-color: #e0f2fe !important; border-color: #bae6fd !important; }
+        .progress-bar-inner { transition: width 0.5s ease-in-out; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #e2e8f0; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .custom-checkbox { appearance: none; background-color: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 4px; width: 1.25rem; height: 1.25rem; cursor: pointer; position: relative; outline: none; transition: background-color 0.2s, border-color 0.2s; }
+        .custom-checkbox:checked { background-color: #10b981; border-color: #059669; }
+        .custom-checkbox:checked::after { content: '\f00c'; font-family: 'Font Awesome 6 Free'; font-weight: 900; font-size: 0.8rem; color: #ffffff; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+        .phase-card.completed-phase { border-left: 4px solid #10b981; background-color: #f0fdf4; }
+
+        input[type="radio"]:checked { background-image: url("data:image/svg+xml,%3csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3e%3ccircle cx='8' cy='8' r='3'/%3e%3c/svg%3e"); }
+        input[type="radio"].text-emerald-500:checked { background-color: #10b981; border-color: #10b981; }
+        input[type="radio"].text-red-500:checked { background-color: #ef4444; border-color: #ef4444; }
+        input[type="radio"]:focus { outline: 2px solid transparent; outline-offset: 2px; --tw-ring-offset-width: 2px; }
+        input[type="radio"].focus\:ring-emerald-500:focus { --tw-ring-color: #10b981; box-shadow: 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color), 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color); }
+        input[type="radio"].focus\:ring-red-500:focus { --tw-ring-color: #ef4444; box-shadow: 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color), 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color); }
+    
+        .challenge-detail-label { font-size: 1rem; color: #475569; }
+        .challenge-detail-value { font-size: 1.25rem; font-weight: 600; }
+
+        .color-swatch { width: 2rem; height: 2rem; border-radius: 0.25rem; cursor: pointer; border: 2px solid transparent; transition: border-color 0.2s ease; display: flex; align-items: center; justify-content: center; }
+        .color-swatch.selected { border-color: #0ea5e9; box-shadow: 0 0 0 2px #0ea5e9; }
+        .color-swatch.selected .fa-check { color: white; opacity: 0.9; font-size:0.8rem; }
+        .color-swatch.gradient-swatch.selected .fa-check { color: #334155; }
+        .text-gradient { background-clip: text !important; -webkit-background-clip: text !important; color: transparent !important; }
+    </style>
+</head>
+<body class="min-h-screen">
+
+    <!-- App Header -->
+    <header class="bg-white border-b border-slate-200 p-5 sticky top-0 z-40">
+        <div class="container mx-auto flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <svg class="h-8 w-8 text-sky-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18 9 11.25l4.306 4.306a11.95 11.95 0 0 1 5.814-5.518l2.74-1.22m0 0-5.94-2.281m5.94 2.28-2.28 5.941" />
+                </svg>
+                <h1 class="text-2xl md:text-3xl font-bold text-sky-600 tracking-tight">
+                    Forex Challenge Planner
+                </h1>
+            </div>
+            <button id="setupChallengeBtn" class="bg-sky-500 hover:bg-sky-600 text-white font-semibold py-2.5 px-5 rounded-lg transition duration-150 ease-in-out transform hover:scale-105 flex items-center focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-opacity-50">
+                <i class="fas fa-cogs mr-2"></i> Setup Challenge
+            </button>
+        </div>
+    </header>
+
+    <section id="challengeSummarySection" class="container mx-auto p-6 md:p-8 bg-white rounded-xl border border-slate-200 mt-8 mb-8">
+        <div class="flex justify-between items-start mb-6">
+            <div><h2 id="challengeCompanyName" class="text-3xl font-bold text-sky-700">Your Trading Challenge</h2><p id="challengeDescriptionDisplay" class="text-slate-600 text-lg">Setup your challenge details.</p></div>
+            <button id="resetChallengeDataBtn" title="Reset All Challenge Data" class="text-slate-400 hover:text-red-500 transition-colors p-2 rounded-full hover:bg-red-100 focus:outline-none focus:ring-1 focus:ring-red-400">
+                <i class="fas fa-power-off fa-lg"></i>
+            </button>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-y-5 gap-x-6 mb-10">
+            <div><span class="challenge-detail-label block font-medium text-slate-500 mb-1">Account Size:</span> <span id="challengeAccountSize" class="challenge-detail-value text-slate-800">$0</span></div>
+            <div><span class="challenge-detail-label block font-medium text-slate-500 mb-1">Overall Target:</span> <span id="challengeProfitTarget" class="challenge-detail-value text-emerald-600">$0</span></div>
+            <div><span class="challenge-detail-label block font-medium text-slate-500 mb-1">Daily Max Loss:</span> <span id="challengeDailyLoss" class="challenge-detail-value text-red-500">$0</span></div>
+            <div><span class="challenge-detail-label block font-medium text-slate-500 mb-1">Total Max Loss:</span> <span id="challengeTotalLoss" class="challenge-detail-value text-red-500">$0</span></div>
+        </div>
+        <div>
+            <div class="flex justify-between text-lg mb-1.5">
+                <span class="font-semibold text-slate-700">Overall Realized P/L:</span>
+                <span id="overallRealizedPL" class="font-bold text-2xl">$0.00</span>
+            </div>
+            <div class="w-full bg-slate-200 rounded-full h-4 overflow-hidden">
+                <div id="overallChallengeProgress" class="progress-bar-inner bg-sky-500 h-4 rounded-full" style="width: 0%;"></div>
+            </div>
+            <p id="overallChallengeCompletionText" class="text-base font-semibold text-slate-500 mt-2 text-right">0% to Overall Target</p>
+        </div>
+    </section>
+
+    <main class="container mx-auto p-4 md:px-8">
+         <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-semibold text-sky-600">Challenge Phases</h2>
+            <div class="flex space-x-2">
+                <button id="clearAllPhasesBtn" title="Clear All Phases" class="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg flex items-center focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50">
+                    <i class="fas fa-trash-alt mr-2"></i> Clear All
+                </button>
+                <button id="addPhaseBtn" class="bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-2 px-5 rounded-lg flex items-center focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50">
+                    <i class="fas fa-layer-group mr-2"></i> New Phase
+                </button>
+            </div>
+        </div>
+        <div id="phasesContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+        <div id="noPhasesMessage" class="hidden text-center text-slate-500 py-10"><i class="fas fa-stream fa-3x mb-4 text-slate-400"></i><p class="text-xl">No phases defined yet.</p></div>
+    </main>
+
+    <!-- Modals -->
+    <div id="challengeSetupModal" class="modal fixed inset-0 z-50 flex items-center justify-center p-4 hidden opacity-0 pointer-events-none">
+        <div class="modal-content p-8 border border-slate-300 w-full max-w-xl transform scale-95 overflow-y-auto max-h-[90vh]">
+            <h2 class="text-2xl font-bold mb-6 text-sky-600">Setup Your Challenge</h2>
+            <form id="challengeSetupForm">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div><label for="setupCompanyName" class="block text-sm font-medium text-slate-600 mb-1">Company Name</label><input type="text" id="setupCompanyName" class="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg placeholder-slate-400 text-slate-800 focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500 focus:ring-opacity-20" placeholder="e.g., FTMO"></div>
+                    <div><label for="setupChallengeDescription" class="block text-sm font-medium text-slate-600 mb-1">Challenge Description</label><input type="text" id="setupChallengeDescription" class="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg placeholder-slate-400 text-slate-800 focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500 focus:ring-opacity-20" placeholder="e.g., $100,000 Challenge"></div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                    <div><label for="setupAccountSize" class="block text-sm font-medium text-slate-600 mb-1">Account Size ($)</label><input type="number" id="setupAccountSize" min="0" step="any" class="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg placeholder-slate-400 text-slate-800 focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500 focus:ring-opacity-20" placeholder="100000" required></div>
+                    <div><label for="setupOverallProfitTarget" class="block text-sm font-medium text-slate-600 mb-1">Overall Profit Target ($)</label><input type="number" id="setupOverallProfitTarget" min="0" step="any" class="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg placeholder-slate-400 text-slate-800 focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500 focus:ring-opacity-20" placeholder="10000" required></div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                    <div><label for="setupDailyLossLimit" class="block text-sm font-medium text-slate-600 mb-1">Daily Max Loss ($)</label><input type="number" id="setupDailyLossLimit" min="0" step="any" class="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg placeholder-slate-400 text-slate-800 focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500 focus:ring-opacity-20" placeholder="5000" required></div>
+                    <div><label for="setupTotalLossLimit" class="block text-sm font-medium text-slate-600 mb-1">Total Max Loss ($)</label><input type="number" id="setupTotalLossLimit" min="0" step="any" class="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg placeholder-slate-400 text-slate-800 focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500 focus:ring-opacity-20" placeholder="10000" required></div>
+                </div>
+                <div class="mt-6"><label class="block text-sm font-medium text-slate-600 mb-2">Company Name Color</label><div id="companyNameColorPicker" class="flex flex-wrap gap-2 p-2 bg-slate-50 border border-slate-200 rounded-md"></div></div>
+                <div class="flex justify-end space-x-3 mt-6"><button type="button" id="cancelChallengeSetup" class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold py-2.5 px-4 rounded-lg">Cancel</button><button type="submit" class="bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-2.5 px-4 rounded-lg">Save Details</button></div>
+            </form>
+        </div>
+    </div>
+    <div id="phaseModal" class="modal fixed inset-0 z-50 flex items-center justify-center p-4 hidden opacity-0 pointer-events-none">
+        <div class="modal-content p-8 border border-slate-300 w-full max-w-md transform scale-95">
+            <h2 id="phaseModalTitle" class="text-2xl font-bold mb-6 text-sky-600">Add Phase</h2>
+            <form id="phaseForm">
+                <input type="hidden" id="phaseIdInput">
+                <div class="mb-4"><label for="phaseTitleInput" class="block text-sm font-medium text-slate-600 mb-1">Phase Title (Base)</label><input type="text" id="phaseTitleInput" class="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg placeholder-slate-400 text-slate-800 focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500 focus:ring-opacity-20" placeholder="e.g., Secure $2k Profit Buffer" required></div>
+                <div class="mb-4"><label for="phaseTargetInput" class="block text-sm font-medium text-slate-600 mb-1">Phase Profit Target (for each)</label><input type="number" id="phaseTargetInput" min="0" step="any" class="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg placeholder-slate-400 text-slate-800 focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500 focus:ring-opacity-20" placeholder="e.g., 2000" required></div>
+                <div class="mb-6"><label for="numberOfPhasesInput" class="block text-sm font-medium text-slate-600 mb-1">Number of Phases to Create</label><input type="number" id="numberOfPhasesInput" min="1" value="1" class="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg placeholder-slate-400 text-slate-800 focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500 focus:ring-opacity-20" required></div>
+                <div class="flex justify-end space-x-3"><button type="button" id="cancelPhase" class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold py-2.5 px-4 rounded-lg">Cancel</button><button type="submit" class="bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-2.5 px-4 rounded-lg">Save Phase(s)</button></div>
+            </form>
+        </div>
+    </div>
+    <div id="subTaskModal" class="modal fixed inset-0 z-50 flex items-center justify-center p-4 hidden opacity-0 pointer-events-none">
+        <div class="modal-content p-8 border w-full max-w-md"><h2 id="subTaskModalTitle" class="text-2xl font-bold mb-6 text-sky-600">Log Trade</h2><form id="subTaskForm"><input type="hidden" id="subTaskParentPhaseIdInput"><input type="hidden" id="subTaskIdInput">
+                <div class="mb-4"><label for="subTaskDescriptionInput" class="block text-sm font-medium text-slate-600 mb-1">Description</label><input type="text" id="subTaskDescriptionInput" class="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg placeholder-slate-400 text-slate-800 focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500 focus:ring-opacity-20" placeholder="e.g., EUR/USD Long TP1" required></div>
+                <div class="mb-4"><label class="block text-sm font-medium text-slate-600 mb-1">Type</label><div class="flex space-x-4"><label class="flex items-center"><input type="radio" name="subTaskType" value="profit" class="h-4 w-4 border-slate-400 text-emerald-500 focus:ring-emerald-500 mr-1" checked> Profit</label><label class="flex items-center"><input type="radio" name="subTaskType" value="loss" class="h-4 w-4 border-slate-400 text-red-500 focus:ring-red-500 mr-1"> Loss</label></div></div>
+                <div class="mb-6"><label for="subTaskAbsoluteAmountInput" class="block text-sm font-medium text-slate-600 mb-1">Amount ($)</label><input type="number" id="subTaskAbsoluteAmountInput" min="0" step="any" class="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg placeholder-slate-400 text-slate-800 focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500 focus:ring-opacity-20" placeholder="e.g., 150.75" required></div>
+                <div class="flex justify-end space-x-3"><button type="button" id="cancelSubTask" class="bg-slate-200 hover:bg-slate-300 py-2.5 px-4 rounded-lg">Cancel</button><button type="submit" class="bg-emerald-500 hover:bg-emerald-600 text-white py-2.5 px-4 rounded-lg">Save Entry</button></div>
+            </form>
+        </div>
+    </div>
+    <div id="confirmModal" class="modal fixed inset-0 z-[60] flex items-center justify-center p-4 hidden opacity-0 pointer-events-none">
+        <div class="modal-content p-8 border w-full max-w-sm"><h2 id="confirmModalTitle" class="text-xl font-bold mb-4 text-yellow-500">Confirm</h2><p id="confirmModalMessage" class="text-slate-600 mb-6">Are you sure?</p><div class="flex justify-end space-x-3"><button type="button" id="cancelConfirm" class="bg-slate-200 hover:bg-slate-300 py-2.5 px-4 rounded-lg">Cancel</button><button type="button" id="confirmAction" class="bg-red-500 hover:bg-red-600 text-white py-2.5 px-4 rounded-lg">Confirm</button></div></div>
+    </div>
+
+<script>
+    // DOM Elements
+    const setupChallengeBtn = document.getElementById('setupChallengeBtn');
+    const challengeSetupModal = document.getElementById('challengeSetupModal');
+    const challengeSetupForm = document.getElementById('challengeSetupForm');
+    const cancelChallengeSetupBtn = document.getElementById('cancelChallengeSetup');
+    const companyNameColorPicker = document.getElementById('companyNameColorPicker');
+    const challengeCompanyNameEl = document.getElementById('challengeCompanyName');
+    const challengeDescriptionDisplayEl = document.getElementById('challengeDescriptionDisplay');
+    const challengeAccountSizeEl = document.getElementById('challengeAccountSize');
+    const challengeProfitTargetEl = document.getElementById('challengeProfitTarget');
+    const challengeDailyLossEl = document.getElementById('challengeDailyLoss');
+    const challengeTotalLossEl = document.getElementById('challengeTotalLoss');
+    const overallRealizedPLEl = document.getElementById('overallRealizedPL');
+    const overallChallengeProgressEl = document.getElementById('overallChallengeProgress');
+    const overallChallengeCompletionTextEl = document.getElementById('overallChallengeCompletionText');
+    const addPhaseBtn = document.getElementById('addPhaseBtn');
+    const clearAllPhasesBtn = document.getElementById('clearAllPhasesBtn'); // New button
+    const resetChallengeDataBtn = document.getElementById('resetChallengeDataBtn'); // New button
+    const phaseModal = document.getElementById('phaseModal');
+    const phaseForm = document.getElementById('phaseForm');
+    const cancelPhaseBtn = document.getElementById('cancelPhase');
+    const phaseModalTitle = document.getElementById('phaseModalTitle');
+    const phaseIdInput = document.getElementById('phaseIdInput');
+    const phaseTitleInput = document.getElementById('phaseTitleInput');
+    const phaseTargetInput = document.getElementById('phaseTargetInput');
+    const numberOfPhasesInput = document.getElementById('numberOfPhasesInput');
+    const phasesContainer = document.getElementById('phasesContainer');
+    const noPhasesMessage = document.getElementById('noPhasesMessage');
+    const subTaskModal = document.getElementById('subTaskModal');
+    const subTaskForm = document.getElementById('subTaskForm');
+    const cancelSubTaskBtn = document.getElementById('cancelSubTask');
+    const subTaskModalTitle = document.getElementById('subTaskModalTitle');
+    const subTaskParentPhaseIdInput = document.getElementById('subTaskParentPhaseIdInput');
+    const subTaskIdInput = document.getElementById('subTaskIdInput');
+    const subTaskDescriptionInput = document.getElementById('subTaskDescriptionInput');
+    const subTaskAbsoluteAmountInput = document.getElementById('subTaskAbsoluteAmountInput');
+    const confirmModal = document.getElementById('confirmModal');
+    const confirmModalTitleEl = document.getElementById('confirmModalTitle');
+    const confirmModalMessageEl = document.getElementById('confirmModalMessage'); 
+    const cancelConfirmBtn = document.getElementById('cancelConfirm');
+    const confirmActionBtn = document.getElementById('confirmAction');
+    let currentConfirmCallback = null;
+
+    // --- IndexedDB Implementation ---
+    const DB_NAME = 'ForexChallengeDB_v1';
+    const DB_VERSION = 1; 
+    const CHALLENGE_DETAILS_STORE_NAME = 'challengeDetailsStore';
+    const PHASES_STORE_NAME = 'phasesStore';
+    const CHALLENGE_DETAILS_KEY = 'mainChallengeDetails';
+    let db;
+
+    function initDB() { /* ... as before ... */ }
+    initDB = () => new Promise((resolve, reject) => {
+        if (db) { resolve(db); return; }
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+        request.onupgradeneeded = (event) => {
+            const tempDb = event.target.result;
+            if (!tempDb.objectStoreNames.contains(CHALLENGE_DETAILS_STORE_NAME)) { tempDb.createObjectStore(CHALLENGE_DETAILS_STORE_NAME); }
+            if (!tempDb.objectStoreNames.contains(PHASES_STORE_NAME)) { tempDb.createObjectStore(PHASES_STORE_NAME, { keyPath: 'id' }); }
+        };
+        request.onsuccess = (event) => { db = event.target.result; resolve(db); };
+        request.onerror = (event) => { console.error('DB error:', event.target.error); reject(event.target.error); };
+    });
+
+    async function saveDataToDB() { /* ... as before ... */ }
+    saveDataToDB = async () => {
+        if (!db) { await initDB(); } 
+        if (!db) { console.error("DB failed to initialize for save."); return Promise.reject("DB init failed"); }
+        return new Promise((resolve, reject) => {
+            try {
+                const transaction = db.transaction([CHALLENGE_DETAILS_STORE_NAME, PHASES_STORE_NAME], 'readwrite');
+                const challengeDetailsStore = transaction.objectStore(CHALLENGE_DETAILS_STORE_NAME);
+                const phasesStore = transaction.objectStore(PHASES_STORE_NAME);
+                challengeDetailsStore.put(JSON.parse(JSON.stringify(appData.challengeDetails)), CHALLENGE_DETAILS_KEY);
+                const clearRequest = phasesStore.clear();
+                clearRequest.onsuccess = () => { appData.phases.forEach(phase => { phasesStore.put(JSON.parse(JSON.stringify(phase))); }); };
+                clearRequest.onerror = (event) => { console.error('Error clearing phases store:', event.target.error); };
+                transaction.oncomplete = resolve;
+                transaction.onerror = (event) => reject(event.target.error);
+            } catch(e) { console.error("Error creating transaction for save:", e); reject(e); }
+        });
+    };
+
+    async function loadDataFromDB() { /* ... as before ... */ }
+    loadDataFromDB = async () => {
+        if (!db) { await initDB(); }
+        if (!db) { console.error("DB failed to initialize for load."); setDefaultAppData(); return Promise.resolve(); }
+        return new Promise((resolve, reject) => {
+            try {
+                const transaction = db.transaction([CHALLENGE_DETAILS_STORE_NAME, PHASES_STORE_NAME], 'readonly');
+                const challengeDetailsStore = transaction.objectStore(CHALLENGE_DETAILS_STORE_NAME);
+                const phasesStore = transaction.objectStore(PHASES_STORE_NAME);
+                const challengeDetailsRequest = challengeDetailsStore.get(CHALLENGE_DETAILS_KEY);
+                const phasesRequest = phasesStore.getAll();
+                let detailsResult, phasesResultData; let detailsDone = false, phasesDone = false;
+                const checkCompletion = () => {
+                    if (detailsDone && phasesDone) {
+                        appData.challengeDetails = detailsResult || { companyName: '', description: '', accountSize: 0, overallProfitTarget: 0, dailyLossLimit: 0, totalLossLimit: 0, companyNameColor: 'text-sky-600' };
+                        if (!appData.challengeDetails.companyNameColor) appData.challengeDetails.companyNameColor = 'text-sky-600';
+                        appData.phases = phasesResultData || []; resolve();
+                    }
+                };
+                challengeDetailsRequest.onsuccess = () => { detailsResult = challengeDetailsRequest.result; detailsDone = true; checkCompletion(); };
+                challengeDetailsRequest.onerror = (event) => { detailsDone = true; console.error("Error loading challenge details", event.target.error); checkCompletion(); };
+                phasesRequest.onsuccess = () => { phasesResultData = phasesRequest.result; phasesDone = true; checkCompletion(); };
+                phasesRequest.onerror = (event) => { phasesDone = true; console.error("Error loading phases", event.target.error); checkCompletion(); };
+                transaction.onerror = (event) => { setDefaultAppData(); console.error("Transaction error in loadDataFromDB", event.target.error); resolve(); }
+                transaction.oncomplete = () => { if (!detailsDone || !phasesDone) { checkCompletion(); } };
+            } catch(e) { console.error("Error creating transaction for load:", e); setDefaultAppData(); resolve(); }
+        });
+    };
+
+    function setDefaultChallengeDetails() { appData.challengeDetails = { companyName: '', description: '', accountSize: 0, overallProfitTarget: 0, dailyLossLimit: 0, totalLossLimit: 0, companyNameColor: 'text-sky-600' }; }
+    function setDefaultAppData() { setDefaultChallengeDetails(); appData.phases = []; }
+    // --- End IndexedDB Implementation ---
+
+    let appData = { 
+        challengeDetails: { companyName: '', description: '', accountSize: 0, overallProfitTarget: 0, dailyLossLimit: 0, totalLossLimit: 0, companyNameColor: 'text-sky-600' },
+        phases: []
+    };
+
+    const companyNameColors = [
+        { name: 'Default Sky', class: 'text-sky-600', style: 'color: #0284c7;' },
+        { name: 'Deep Blue', class: 'text-blue-700', style: 'color: #1d4ed8;' },
+        { name: 'Emerald', class: 'text-emerald-600', style: 'color: #059669;' },
+        { name: 'Indigo', class: 'text-indigo-600', style: 'color: #4f46e5;' },
+        { name: 'Rose', class: 'text-rose-600', style: 'color: #e11d48;' },
+        { name: 'Amber', class: 'text-amber-600', style: 'color: #d97706;' },
+        { name: 'Purple', class: 'text-purple-600', style: 'color: #9333ea;'},
+        { name: 'Gray', class: 'text-slate-700', style: 'color: #334155;' },
+        { name: 'Black', class: 'text-black', style: 'color: #000000;'},
+        { name: 'Gradient Blue-Purple', class: 'text-gradient bg-gradient-to-r from-blue-500 to-purple-600', styleCss: 'background-image: linear-gradient(to right, #3b82f6, #9333ea);' },
+        { name: 'Gradient Green-Teal', class: 'text-gradient bg-gradient-to-r from-green-400 to-teal-500', styleCss: 'background-image: linear-gradient(to right, #4ade80, #14b8a6);' },
+        { name: 'Gradient Orange-Red', class: 'text-gradient bg-gradient-to-r from-orange-400 to-red-500', styleCss: 'background-image: linear-gradient(to right, #fb923c, #ef4444);' },
+        { name: 'Gradient Sky-Indigo', class: 'text-gradient bg-gradient-to-r from-sky-400 to-indigo-500', styleCss: 'background-image: linear-gradient(to right, #38bdf8, #6366f1);' },
+        { name: 'Gradient Black-Gray', class: 'text-gradient bg-gradient-to-r from-black to-slate-600', styleCss: 'background-image: linear-gradient(to right, #000000, #475569);' },
+        { name: 'Gradient Sunset', class: 'text-gradient bg-gradient-to-r from-orange-500 via-pink-500 to-purple-600', styleCss: 'background-image: linear-gradient(to right, #f97316, #ec4899, #9333ea);' },
+        { name: 'Gradient Ocean', class: 'text-gradient bg-gradient-to-r from-cyan-500 to-blue-500', styleCss: 'background-image: linear-gradient(to right, #06b6d4, #3b82f6);' },
+        { name: 'Gradient Forest', class: 'text-gradient bg-gradient-to-r from-green-500 to-emerald-700', styleCss: 'background-image: linear-gradient(to right, #22c55e, #047857);' }
+    ];
+
+    generateId = () => self.crypto.randomUUID ? self.crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).substring(2);
+    openModal = (modalElement) => { modalElement.classList.remove('hidden'); setTimeout(() => { modalElement.classList.remove('opacity-0', 'pointer-events-none'); modalElement.querySelector('.modal-content').classList.remove('scale-95'); }, 10); };
+    closeModal = (modalElement) => { modalElement.querySelector('.modal-content').classList.add('scale-95'); modalElement.classList.add('opacity-0'); setTimeout(() => { modalElement.classList.add('pointer-events-none'); modalElement.classList.add('hidden'); }, 300); };
+    showConfirmationModal = (title, message, callback) => { confirmModalTitleEl.textContent = title; confirmModalMessageEl.textContent = message; currentConfirmCallback = callback; openModal(confirmModal); };
+    
+    confirmActionBtn.addEventListener('click', async () => { if (currentConfirmCallback) await currentConfirmCallback(); closeModal(confirmModal); currentConfirmCallback = null; });
+    cancelConfirmBtn.addEventListener('click', () => closeModal(confirmModal));
+
+    initializeColorPicker = () => { /* ... as before ... */ };
+    initializeColorPicker = () => {
+        companyNameColorPicker.innerHTML = '';
+        companyNameColors.forEach(color => {
+            const swatch = document.createElement('div');
+            swatch.className = 'color-swatch';
+            if (color.styleCss) { swatch.style.cssText = color.styleCss; swatch.classList.add('gradient-swatch');} 
+            else { swatch.style.backgroundColor = color.style.split(':')[1].replace(';',''); }
+            swatch.dataset.colorClass = color.class; swatch.title = color.name;
+            if (appData.challengeDetails && color.class === appData.challengeDetails.companyNameColor) { swatch.classList.add('selected'); swatch.innerHTML = `<i class="fas fa-check"></i>`; }
+            swatch.addEventListener('click', () => selectColorSwatch(swatch));
+            companyNameColorPicker.appendChild(swatch);
+        });
+    };
+
+    function selectColorSwatch(selectedSwatch) { /* ... as before ... */ }
+    selectColorSwatch = (selectedSwatch) => {
+        document.querySelectorAll('#companyNameColorPicker .color-swatch').forEach(s => { s.classList.remove('selected'); s.innerHTML = ''; });
+        selectedSwatch.classList.add('selected'); selectedSwatch.innerHTML = `<i class="fas fa-check"></i>`;
+        if(appData.challengeDetails) appData.challengeDetails.companyNameColor = selectedSwatch.dataset.colorClass;
+    };
+
+    setupChallengeBtn.addEventListener('click', () => { /* ... as before ... */ });
+    setupChallengeBtn.addEventListener('click', () => {
+        if (!appData.challengeDetails) setDefaultChallengeDetails();
+        document.getElementById('setupCompanyName').value = appData.challengeDetails.companyName || '';
+        document.getElementById('setupChallengeDescription').value = appData.challengeDetails.description || '';
+        document.getElementById('setupAccountSize').value = appData.challengeDetails.accountSize || '';
+        document.getElementById('setupOverallProfitTarget').value = appData.challengeDetails.overallProfitTarget || '';
+        document.getElementById('setupDailyLossLimit').value = appData.challengeDetails.dailyLossLimit || '';
+        document.getElementById('setupTotalLossLimit').value = appData.challengeDetails.totalLossLimit || '';
+        initializeColorPicker(); openModal(challengeSetupModal);
+    });
+
+    cancelChallengeSetupBtn.addEventListener('click', () => closeModal(challengeSetupModal));
+
+    challengeSetupForm.addEventListener('submit', async (e) => { /* ... as before ... */ });
+    challengeSetupForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (!appData.challengeDetails) setDefaultChallengeDetails();
+        appData.challengeDetails.companyName = document.getElementById('setupCompanyName').value.trim();
+        appData.challengeDetails.description = document.getElementById('setupChallengeDescription').value.trim();
+        appData.challengeDetails.accountSize = parseFloat(document.getElementById('setupAccountSize').value) || 0;
+        appData.challengeDetails.overallProfitTarget = parseFloat(document.getElementById('setupOverallProfitTarget').value) || 0;
+        appData.challengeDetails.dailyLossLimit = parseFloat(document.getElementById('setupDailyLossLimit').value) || 0;
+        appData.challengeDetails.totalLossLimit = parseFloat(document.getElementById('setupTotalLossLimit').value) || 0;
+        await saveDataToDB(); renderChallengeSummary(); renderPhases(); closeModal(challengeSetupModal);
+    });
+    
+    calculatePhaseRealizedPL = (phase) => { return phase.subTasks.reduce((sum, st) => st.completed ? sum + st.amount : sum, 0); };
+    calculateOverallRealizedPL = () => { return appData.phases.reduce((sum, phase) => sum + calculatePhaseRealizedPL(phase), 0); };
+
+    renderChallengeSummary = () => { /* ... as before with gradient fix ... */ };
+    renderChallengeSummary = () => {
+        if (!appData.challengeDetails) setDefaultChallengeDetails();
+        const details = appData.challengeDetails;
+        challengeCompanyNameEl.textContent = details.companyName || 'Your Trading Challenge';
+        
+        const allKnownColorClasses = companyNameColors.map(c => c.class.split(' ')).flat().filter(Boolean);
+        challengeCompanyNameEl.classList.remove(...allKnownColorClasses); 
+        challengeCompanyNameEl.style.backgroundImage = '';
+
+        const newColorClasses = (details.companyNameColor || 'text-sky-600').split(' ');
+        challengeCompanyNameEl.classList.add(...newColorClasses);
+
+        if (newColorClasses.includes('text-gradient')) { 
+             const selectedColorDef = companyNameColors.find(c => c.class === details.companyNameColor);
+             if(selectedColorDef && selectedColorDef.styleCss) {
+                challengeCompanyNameEl.style.backgroundImage = selectedColorDef.styleCss.split('background-image:')[1].replace(';','');
+             }
+        }
+
+        challengeDescriptionDisplayEl.textContent = details.description || 'Setup your challenge details to get started.';
+        challengeAccountSizeEl.textContent = `$${(details.accountSize || 0).toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:0})}`;
+        challengeProfitTargetEl.textContent = `$${(details.overallProfitTarget || 0).toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:0})}`;
+        challengeDailyLossEl.textContent = `$${(details.dailyLossLimit || 0).toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:0})}`;
+        challengeTotalLossEl.textContent = `$${(details.totalLossLimit || 0).toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:0})}`;
+        const overallPL = calculateOverallRealizedPL();
+        overallRealizedPLEl.classList.remove('text-emerald-600', 'text-red-500', 'text-sky-600');
+        if (overallPL > 0) { overallRealizedPLEl.classList.add('text-emerald-600'); overallRealizedPLEl.textContent = `+$${overallPL.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}`; } 
+        else if (overallPL < 0) { overallRealizedPLEl.classList.add('text-red-500'); overallRealizedPLEl.textContent = `-$${Math.abs(overallPL).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}`; } 
+        else { overallRealizedPLEl.classList.add('text-sky-600'); overallRealizedPLEl.textContent = `$${overallPL.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}`; }
+        const overallTarget = details.overallProfitTarget || 0;
+        const overallProgressPercentage = overallTarget > 0 ? Math.min(Math.max((overallPL / overallTarget) * 100, 0), 100) : (overallPL > 0 ? 100 : 0);
+        overallChallengeProgressEl.style.width = `${overallProgressPercentage}%`;
+        overallChallengeProgressEl.classList.toggle('bg-emerald-500', overallPL >= overallTarget && overallTarget > 0);
+        overallChallengeProgressEl.classList.toggle('bg-sky-500', !(overallPL >= overallTarget && overallTarget > 0));
+        overallChallengeCompletionTextEl.textContent = `${overallProgressPercentage.toFixed(0)}% to Overall Target`;
+        if (overallPL >= overallTarget && overallTarget > 0) { overallChallengeCompletionTextEl.innerHTML = `<i class="fas fa-trophy text-yellow-400 mr-1"></i> Overall Target Achieved!`; }
+    };
+
+    renderPhases = () => { /* ... as before ... */ };
+    renderPhases = () => {
+        phasesContainer.innerHTML = '';
+        if (!appData.phases || appData.phases.length === 0) { noPhasesMessage.classList.remove('hidden'); phasesContainer.classList.add('hidden'); } 
+        else { noPhasesMessage.classList.add('hidden'); phasesContainer.classList.remove('hidden'); }
+        if(appData.phases) appData.phases.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+        (appData.phases || []).forEach(phase => {
+            const phasePL = calculatePhaseRealizedPL(phase);
+            const phaseProgressPercentage = phase.targetAmount > 0 ? Math.min(Math.max((phasePL / phase.targetAmount) * 100, 0), 100) : (phasePL > 0 ? 100 : 0);
+            const isPhaseTargetMet = phase.targetAmount > 0 && phasePL >= phase.targetAmount;
+            const phaseCard = document.createElement('div');
+            phaseCard.className = `phase-card bg-white p-6 rounded-xl border border-slate-200 flex flex-col space-y-4 transition-all duration-300 hover:border-sky-300 ${isPhaseTargetMet ? 'completed-phase' : ''}`;
+            phaseCard.dataset.id = phase.id;
+            let subTasksHTML = '<div class="space-y-2.5 max-h-60 overflow-y-auto pr-1 py-1">';
+            if(phase.subTasks) phase.subTasks.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+            (phase.subTasks || []).forEach(st => {
+                const amountColor = st.amount >= 0 ? 'text-emerald-600' : 'text-red-500';
+                const completedClass = st.completed ? 'completed' : '';
+                subTasksHTML += `
+                    <div class="sub-phase-item flex items-center justify-between p-3 bg-slate-50 hover:bg-slate-100 rounded-lg border border-slate-200 ${completedClass}" data-id="${st.id}">
+                        <div class="flex items-center flex-grow mr-2">
+                            <input type="checkbox" class="custom-checkbox mr-3 flex-shrink-0 toggle-sub-task" ${st.completed ? 'checked' : ''}>
+                            <span class="sub-phase-description text-sm text-slate-700 break-words">${st.description}</span>
+                        </div>
+                        <div class="flex items-center flex-shrink-0">
+                            <span class="text-sm font-semibold ${amountColor} mr-2">${st.amount >= 0 ? '+' : ''}$${Math.abs(st.amount).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</span>
+                            <button class="edit-sub-task text-slate-400 hover:text-sky-500 p-1 rounded-full hover:bg-sky-100 mr-1"><i class="fas fa-edit"></i></button>
+                            <button class="delete-sub-task text-slate-400 hover:text-red-500 p-1 rounded-full hover:bg-red-100"><i class="fas fa-times-circle"></i></button>
+                        </div>
+                    </div>`;
+            });
+            subTasksHTML += `</div>`;
+            if (!phase.subTasks || phase.subTasks.length === 0) subTasksHTML = '<p class="text-sm text-slate-500 text-center py-4">No trades/steps logged.</p>';
+            phaseCard.innerHTML = `
+                <div class="flex justify-between items-start">
+                    <div><h3 class="text-xl font-bold text-sky-600">${phase.title}</h3><p class="text-sm text-slate-500">Target: $${phase.targetAmount.toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:0})}</p></div>
+                    <div class="flex space-x-1"><button class="edit-phase text-slate-400 hover:text-sky-500 p-2 rounded-full hover:bg-sky-100"><i class="fas fa-edit"></i></button><button class="delete-phase text-slate-400 hover:text-red-500 p-2 rounded-full hover:bg-red-100"><i class="fas fa-trash-alt"></i></button></div>
+                </div>
+                <div>
+                    <div class="flex justify-between text-sm mb-1"><span class="font-medium ${phasePL >=0 ? 'text-emerald-600' : 'text-red-500'}">Realized P/L: $${phasePL.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</span><span class="text-slate-500">${phaseProgressPercentage.toFixed(0)}%</span></div>
+                    <div class="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden"><div class="progress-bar-inner ${isPhaseTargetMet ? 'bg-emerald-500' : (phasePL >=0 ? 'bg-sky-500' : 'bg-red-500')} h-2.5 rounded-full" style="width: ${phaseProgressPercentage}%;"></div></div>
+                    ${isPhaseTargetMet ? '<p class="text-xs text-emerald-500 mt-1.5 text-right flex items-center justify-end"><i class="fas fa-check-circle mr-1"></i>Target Met!</p>' : ''}
+                </div>
+                <div class="border-t border-slate-200 pt-4"><h4 class="text-md font-semibold text-slate-700 mb-3">Log (Checked = Realized):</h4>${subTasksHTML}</div>
+                <button class="add-sub-task-btn bg-sky-500 hover:bg-sky-600 text-white font-semibold py-2.5 px-4 rounded-lg w-full flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-opacity-50"><i class="fas fa-plus mr-2"></i> Log Trade/Step</button>`;
+            phasesContainer.appendChild(phaseCard);
+        });
+        renderChallengeSummary();
+    };
+
+    addPhaseBtn.addEventListener('click', () => {
+        phaseModalTitle.textContent = "Add New Phase";
+        phaseForm.reset(); 
+        phaseIdInput.value = ''; 
+        numberOfPhasesInput.value = '1';
+        numberOfPhasesInput.disabled = false; // Enable for new phase creation
+        openModal(phaseModal);
+    });
+    cancelPhaseBtn.addEventListener('click', () => closeModal(phaseModal));
+    
+    phaseForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const baseTitle = phaseTitleInput.value.trim();
+        const target = parseFloat(phaseTargetInput.value);
+        const idToEdit = phaseIdInput.value;
+        const numToCreate = parseInt(numberOfPhasesInput.value, 10) || 1;
+
+        if (baseTitle && !isNaN(target) && target >= 0 && numToCreate >= 1) {
+            if (idToEdit) { 
+                const phase = appData.phases.find(p => p.id === idToEdit);
+                if (phase) { phase.title = baseTitle; phase.targetAmount = target; }
+            } else { 
+                for (let i = 0; i < numToCreate; i++) {
+                    const phaseTitle = numToCreate > 1 ? `${baseTitle} #${i + 1}` : baseTitle;
+                    appData.phases.push({ id: generateId(), title: phaseTitle, targetAmount: target, subTasks: [], createdAt: new Date().toISOString() });
+                }
+            }
+            await saveDataToDB(); renderPhases(); closeModal(phaseModal);
+        } else { alert("Please provide a valid phase title, target amount, and number of phases."); }
+    });
+
+    clearAllPhasesBtn.addEventListener('click', () => {
+        showConfirmationModal('Clear All Phases', 'Are you sure you want to delete ALL phases and their trade logs? This action cannot be undone.', async () => {
+            appData.phases = [];
+            await saveDataToDB();
+            renderPhases();
+        });
+    });
+
+    resetChallengeDataBtn.addEventListener('click', () => {
+        showConfirmationModal('Reset Challenge Data', 'Are you sure you want to reset ALL challenge data, including details and phases? This action cannot be undone.', async () => {
+            setDefaultAppData(); // Resets both challengeDetails and phases in appData
+            await saveDataToDB(); // Save the reset state
+            renderChallengeSummary();
+            renderPhases();
+        });
+    });
+
+
+    cancelSubTaskBtn.addEventListener('click', () => closeModal(subTaskModal));
+    subTaskForm.addEventListener('submit', async (e) => { /* ... as before ... */ });
+    subTaskForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const parentPhaseId = subTaskParentPhaseIdInput.value;
+        const subTaskIdToEdit = subTaskIdInput.value;
+        const description = subTaskDescriptionInput.value.trim();
+        const type = subTaskForm.querySelector('input[name="subTaskType"]:checked').value;
+        const absoluteAmount = parseFloat(subTaskAbsoluteAmountInput.value);
+        if (parentPhaseId && description && !isNaN(absoluteAmount) && absoluteAmount >= 0) {
+            const phase = appData.phases.find(p => p.id === parentPhaseId);
+            if (phase) {
+                const finalAmount = type === 'loss' ? -absoluteAmount : absoluteAmount;
+                if (subTaskIdToEdit) {
+                    const subTask = phase.subTasks.find(st => st.id === subTaskIdToEdit);
+                    if (subTask) { subTask.description = description; subTask.amount = finalAmount; }
+                } else {
+                    phase.subTasks.push({ id: generateId(), description, amount: finalAmount, completed: false, createdAt: new Date().toISOString() });
+                }
+                await saveDataToDB(); renderPhases(); closeModal(subTaskModal);
+                subTaskIdInput.value = ''; subTaskForm.querySelector('input[name="subTaskType"][value="profit"]').checked = true;
+            }
+        } else { alert("Please provide valid description, type, and non-negative amount."); }
+    });
+
+    phasesContainer.addEventListener('click', async (e) => { /* ... as before, edit phase disables num input ... */ });
+    phasesContainer.addEventListener('click', async (e) => {
+        const phaseCard = e.target.closest('.phase-card');
+        if (!phaseCard) return;
+        const phaseId = phaseCard.dataset.id;
+        const currentPhase = appData.phases.find(p => p.id === phaseId);
+
+        if (e.target.closest('.add-sub-task-btn')) {
+            subTaskModalTitle.textContent = "Log Trade / Step";
+            subTaskForm.reset(); subTaskParentPhaseIdInput.value = phaseId; subTaskIdInput.value = '';
+            subTaskForm.querySelector('input[name="subTaskType"][value="profit"]').checked = true; openModal(subTaskModal);
+        } else if (e.target.closest('.edit-phase')) {
+            if(currentPhase) {
+                phaseModalTitle.textContent = "Edit Phase"; phaseIdInput.value = currentPhase.id;
+                phaseTitleInput.value = currentPhase.title; phaseTargetInput.value = currentPhase.targetAmount;
+                numberOfPhasesInput.value = '1'; 
+                numberOfPhasesInput.disabled = true; // Disable for edit
+                openModal(phaseModal);
+            }
+        } else if (e.target.closest('.delete-phase')) {
+            showConfirmationModal('Delete Phase', `Are you sure you want to delete the phase "${currentPhase.title}" and all its logged trades?`, async () => {
+                appData.phases = appData.phases.filter(p => p.id !== phaseId); await saveDataToDB(); renderPhases();
+            });
+        }
+        const subTaskItem = e.target.closest('.sub-phase-item');
+        if (!subTaskItem) return;
+        const subTaskId = subTaskItem.dataset.id;
+        if (!currentPhase || !currentPhase.subTasks) return;
+        const currentSubTask = currentPhase.subTasks.find(st => st.id === subTaskId);
+        if (!currentSubTask) return;
+
+        if (e.target.classList.contains('toggle-sub-task')) {
+            currentSubTask.completed = e.target.checked; await saveDataToDB(); renderPhases();
+        } else if (e.target.closest('.edit-sub-task')) {
+            subTaskModalTitle.textContent = "Edit Log Entry"; subTaskParentPhaseIdInput.value = phaseId;
+            subTaskIdInput.value = currentSubTask.id; subTaskDescriptionInput.value = currentSubTask.description;
+            subTaskAbsoluteAmountInput.value = Math.abs(currentSubTask.amount);
+            subTaskForm.querySelector(`input[name="subTaskType"][value="${currentSubTask.amount >= 0 ? 'profit' : 'loss'}"]`).checked = true; openModal(subTaskModal);
+        } else if (e.target.closest('.delete-sub-task')) {
+            showConfirmationModal('Delete Log Entry', `Are you sure you want to delete this entry: "${currentSubTask.description}"?`, async () => {
+                currentPhase.subTasks = currentPhase.subTasks.filter(st => st.id !== subTaskId); await saveDataToDB(); renderPhases();
+            });
+        }
+    });
+
+    async function initialAppLoad() {
+        try {
+            await initDB();
+            await loadDataFromDB();
+            renderChallengeSummary();
+            renderPhases();
+        } catch (error) {
+            console.error("Fatal error during app initialization:", error);
+            document.body.innerHTML = `<div class="p-8 text-center text-red-600">Error initializing application. Please check browser console for details. IndexedDB might not be supported or an error occurred.</div>`;
+        }
+    }
+    initialAppLoad();
+
+</script>
+</body>
+</html>
