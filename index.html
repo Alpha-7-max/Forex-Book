@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-G">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Forex Challenge Planner - IndexedDB Fixed</title>
+    <title>Forex-Book</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <style>
@@ -55,7 +55,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18 9 11.25l4.306 4.306a11.95 11.95 0 0 1 5.814-5.518l2.74-1.22m0 0-5.94-2.281m5.94 2.28-2.28 5.941" />
                 </svg>
                 <h1 class="text-2xl md:text-3xl font-bold text-sky-600 tracking-tight">
-                    Forex Challenge Planner
+                    Forex-Book
                 </h1>
             </div>
             <button id="setupChallengeBtn" class="bg-sky-500 hover:bg-sky-600 text-white font-semibold py-2.5 px-5 rounded-lg transition duration-150 ease-in-out transform hover:scale-105 flex items-center focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-opacity-50">
@@ -197,7 +197,7 @@
     let currentConfirmCallback = null;
 
     // --- IndexedDB Implementation ---
-    const DB_NAME = 'ForexChallengeDB_v1';
+    const DB_NAME = 'ForexBookDB_v1';
     const DB_VERSION = 1; 
     const CHALLENGE_DETAILS_STORE_NAME = 'challengeDetailsStore';
     const PHASES_STORE_NAME = 'phasesStore';
